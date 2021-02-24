@@ -1,4 +1,4 @@
-frequencyH : 10   #higher frequency (value is in ms)
+frequencyH : 50   #higher frequency (value is in ms)
 frequencyL : 100  #lower frequency
 frequencyG : 100  #frequency for general queries
 
