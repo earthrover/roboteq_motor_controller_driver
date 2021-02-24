@@ -66,8 +66,16 @@ void Driver::roboteq_subscriber()
 bool Driver::configservice(roboteq_motor_controller_driver::config_srv::Request &request, roboteq_motor_controller_driver::config_srv::Response &response)
 {
 	std::stringstream str;
-	str << "^" << request.userInput << " " << request.channel << " " << request.value << "_ "
+	if(request.channel)
+	{
+		str << "^" << request.userInput << " " << request.channel << " " << request.value << "_ "
 		<< "%\clsav321654987";
+	}
+	else
+	{
+		str << "^" << request.userInput << " " << request.value << "_ "
+		<< "%\clsav321654987";
+	}
 	ser.write(str.str());
 	response.result = str.str();
 
@@ -211,10 +219,11 @@ void Driver::run()
 
 			std::vector<std::string> Field9;
 			boost::split(fields, result.data, boost::algorithm::is_any_of("D"));
-
 			std::vector<std::string> fields_H;
 			boost::split(fields_H, fields[1], boost::algorithm::is_any_of("?"));
-			//	    std::cout << fields_H[1] << std::endl;
+			if(fields_H[1] == "\",\"")
+				boost::split(fields_H, fields[4], boost::algorithm::is_any_of("?"));
+				    // std::cout << fields_H[1] << std::endl;
 			if (fields_H[0] == "H")
 			{
 
@@ -225,11 +234,11 @@ void Driver::run()
 
 					boost::split(sub_fields_H, fields_H[i + 1], boost::algorithm::is_any_of(":"));
 					roboteq_motor_controller_driver::channel_values Q1;
-					
+
 					Q1.value.push_back(0);
 					for (int j = 0; j < sub_fields_H.size(); j++)
 					{
-						
+
 						Q1.value.push_back(boost::lexical_cast<int>(sub_fields_H[j]));
 					}
 
@@ -244,7 +253,11 @@ void Driver::run()
 			std::vector<std::string> fields_L;
 			std::vector<std::string> fields_G;
 			boost::split(fields_G, fields[3], boost::algorithm::is_any_of("?"));
+			if(fields_G[1] == "\",\"")
+				boost::split(fields_G, fields[6], boost::algorithm::is_any_of("?"));
 			boost::split(fields_L, fields[2], boost::algorithm::is_any_of("?"));
+			if(fields_L[1] == "\",\"")
+				boost::split(fields_L, fields[5], boost::algorithm::is_any_of("?"));
 
 			//if (fields_L[0] == "L" || fields_G[0] == "L" )
 			if (fields_L[0] == "L")
