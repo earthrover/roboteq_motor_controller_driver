@@ -20,7 +20,10 @@ using namespace roboteq;
 
 void Driver::connect()
 {
+	ros::NodeHandle n;
 	int serial_trials = 1;
+	std_msgs::Bool port_status;
+	port_status_publisher = n.advertise<std_msgs::Bool>("roboteq_motor_controller_driver_node/serial_port_status", 100);
 	while(serial_trials <= 20)
 	{
 		try
@@ -37,7 +40,9 @@ void Driver::connect()
 		}
 		if (ser.isOpen())
 		{
-			ROS_INFO_STREAM("Serial Port initialized\"");
+			ROS_INFO_STREAM("Serial Port initialized ");
+			port_status.data = true;
+			port_status_publisher.publish(port_status);
 			break;
 		}
 		else
