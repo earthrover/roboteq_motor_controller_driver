@@ -22,8 +22,7 @@ void Driver::connect()
 {
 	ros::NodeHandle n;
 	int serial_trials = 1;
-	std_msgs::Bool port_status;
-	port_status_publisher = n.advertise<std_msgs::Bool>("roboteq_motor_controller_driver_node/serial_port_status", 100);
+
 	while(serial_trials <= 20)
 	{
 		try
@@ -41,8 +40,6 @@ void Driver::connect()
 		if (ser.isOpen())
 		{
 			ROS_INFO_STREAM("Serial Port initialized ");
-			port_status.data = true;
-			port_status_publisher.publish(port_status);
 			break;
 		}
 		else
@@ -73,20 +70,27 @@ void Driver::roboteq_subscriber()
 
 bool Driver::configservice(roboteq_motor_controller_driver::config_srv::Request &request, roboteq_motor_controller_driver::config_srv::Response &response)
 {
-	std::stringstream str;
-	if(request.channel)
+	size_t n = request.channel.size();
+	std::stringstream ss;
+
+	for(size_t i{0}; i<n; i++)
 	{
-		str << "^" << request.userInput << " " << request.channel << " " << request.value << "_ "
-		<< "%\clsav321654987";
+		if(request.channel[i])
+		{
+			ss << "^" << request.userInput[i] << " " << request.channel[i] << " " << request.value[i] << "_";
+		}
+		else
+		{
+			ss << "^" << request.userInput[i] << " " << request.value[i]<< "_";
+		}
+		if (i==n-1)
+		{
+			ss << " %\clsav321654987";
+		}
 	}
-	else
-	{
-		str << "^" << request.userInput << " " << request.value << "_ "
-		<< "%\clsav321654987";
-	}
-	ser.write(str.str());
+	ser.write(ss.str());
 	ser.flush();
-	response.result = str.str();
+	response.result = ss.str();
 
 	ROS_INFO_STREAM(response.result);
 	return true;
@@ -124,6 +128,34 @@ void Driver::roboteq_services()
 	configsrv = n.advertiseService("config_service", &Driver::configservice, this);
 	commandsrv = n.advertiseService("command_service", &Driver::commandservice, this);
 	maintenancesrv = n.advertiseService("maintenance_service", &Driver::maintenanceservice, this);
+}
+
+bool Driver::load_manual_profile()
+{
+	ros::NodeHandle n;
+	int mixing_mode, operating_mode, max_power_adjust, cmd_prior_1, cmd_prior_2;
+  float proportional_gain, integral_gain;
+	float cl_speed_position_KP = 0, cl_speed_KP = 0, cl_speed_position_KI = 0, cl_speed_KI = 0;
+
+	roboteq_motor_controller_driver::config_srv srv;
+
+	n.param<int>("/roboteq_controller_parameters/Manual/command_priority_1", cmd_prior_1, 1);
+	n.param<int>("/roboteq_controller_parameters/Manual/command_priority_2", cmd_prior_2, 2);
+	n.param<int>("/roboteq_controller_parameters/Manual/mixing_mode", mixing_mode, 1);
+	n.param<int>("/roboteq_controller_parameters/Manual/operating_mode", operating_mode, 0);
+	n.param<int>("/roboteq_controller_parameters/Manual/max_power_adjust", max_power_adjust, 25);
+	n.param<float>("/roboteq_controller_parameters/Manual/KP", proportional_gain, 0);
+	n.param<float>("/roboteq_controller_parameters/Manual/KI", integral_gain, 0);
+
+	std::vector<std::string> usr_input{"CPRI", "CPRI", "MXMD", "MMOD", "MMOD", "MXPF", "MXPF", "MXPR", "MXPR","KPG", "KPG", "KIG", "KIG", "KPG", "KPG", "KIG", "KIG"};
+  std::vector<int64_t> val{cmd_prior_1, cmd_prior_2, mixing_mode, operating_mode, operating_mode, max_power_adjust, max_power_adjust, max_power_adjust, max_power_adjust, cl_speed_KP, cl_speed_KP, cl_speed_KI, cl_speed_KI, cl_speed_position_KP, cl_speed_position_KP, cl_speed_position_KI, cl_speed_position_KI};
+  std::vector<int64_t> ch{1, 2, 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4};
+
+	srv.request.value = val;
+  srv.request.userInput = usr_input;
+  srv.request.channel = ch;
+
+	return configservice(srv.request, srv.response);
 }
 
 void Driver::run()

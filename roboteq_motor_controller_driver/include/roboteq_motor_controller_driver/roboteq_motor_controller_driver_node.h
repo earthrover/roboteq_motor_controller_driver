@@ -53,6 +53,7 @@ public:
 	//void diff_drive(int speed1, int speed2, float wheel_rad, float wheel_dist, int encoder_coef);
 	//void cmd_vel_callback(sensor_msgs::Joy::ConstPtr& msg);
 	void connect();
+	bool load_manual_profile();
 	void run();
 	void roboteq_subscriber();
 	void roboteq_publisher();
