@@ -72,24 +72,27 @@ bool Driver::configservice(roboteq_motor_controller_driver::config_srv::Request 
 {
 	size_t n = request.channel.size();
 	std::stringstream ss;
-	response.result.resize(n);
 
 	for(size_t i{0}; i<n; i++)
 	{
 		if(request.channel[i])
 		{
 			ss << "^" << request.userInput[i] << " " << request.channel[i] << " " << request.value[i] << "_";
-			//<< "%\clsav321654987";
 		}
 		else
 		{
 			ss << "^" << request.userInput[i] << " " << request.value[i]<< "_";
-			//<< "%\clsav321654987";
+		}
+		if (i==n-1)
+		{
+			ss << " %\clsav321654987";
 		}
 	}
-		ser.write(ss.str());
-		ser.flush();
+	ser.write(ss.str());
+	ser.flush();
+	response.result = ss.str();
 
+	ROS_INFO_STREAM(response.result);
 	return true;
 }
 
