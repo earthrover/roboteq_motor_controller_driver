@@ -140,7 +140,7 @@ bool Driver::load_manual_profile()
 	roboteq_motor_controller_driver::config_srv srv;
 
 	n.param<int>("/roboteq_controller_parameters/Manual/command_priority_1", cmd_prior_1, 1);
-	n.param<int>("/roboteq_controller_parameters/Manual/command_priority_2", cmd_prior_2, 2);
+	n.param<int>("/roboteq_controller_parameters/Manual/command_priority_2", cmd_prior_2, 0);
 	n.param<int>("/roboteq_controller_parameters/Manual/mixing_mode", mixing_mode, 1);
 	n.param<int>("/roboteq_controller_parameters/Manual/operating_mode", operating_mode, 0);
 	n.param<int>("/roboteq_controller_parameters/Manual/max_power_adjust", max_power_adjust, 25);
