@@ -134,7 +134,7 @@ bool Driver::load_manual_profile()
 {
 	ros::NodeHandle n;
 	int mixing_mode, operating_mode, max_power_adjust, cmd_prior_1, cmd_prior_2;
-  float proportional_gain, integral_gain;
+	float proportional_gain, integral_gain;
 	float cl_speed_position_KP = 0, cl_speed_KP = 0, cl_speed_position_KI = 0, cl_speed_KI = 0;
 
 	roboteq_motor_controller_driver::config_srv srv;
@@ -148,12 +148,12 @@ bool Driver::load_manual_profile()
 	n.param<float>("/roboteq_controller_parameters/Manual/KI", integral_gain, 0);
 
 	std::vector<std::string> usr_input{"CPRI", "CPRI", "MXMD", "MMOD", "MMOD", "MXPF", "MXPF", "MXPR", "MXPR","KPG", "KPG", "KIG", "KIG", "KPG", "KPG", "KIG", "KIG"};
-  std::vector<int64_t> val{cmd_prior_1, cmd_prior_2, mixing_mode, operating_mode, operating_mode, max_power_adjust, max_power_adjust, max_power_adjust, max_power_adjust, cl_speed_KP, cl_speed_KP, cl_speed_KI, cl_speed_KI, cl_speed_position_KP, cl_speed_position_KP, cl_speed_position_KI, cl_speed_position_KI};
-  std::vector<int64_t> ch{1, 2, 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4};
+	std::vector<int64_t> val{cmd_prior_1, cmd_prior_2, mixing_mode, operating_mode, operating_mode, max_power_adjust, max_power_adjust, max_power_adjust, max_power_adjust, cl_speed_KP, cl_speed_KP, cl_speed_KI, cl_speed_KI, cl_speed_position_KP, cl_speed_position_KP, cl_speed_position_KI, cl_speed_position_KI};
+	std::vector<int64_t> ch{1, 2, 0, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4, 3, 4};
 
 	srv.request.value = val;
-  srv.request.userInput = usr_input;
-  srv.request.channel = ch;
+	srv.request.userInput = usr_input;
+	srv.request.channel = ch;
 
 	return configservice(srv.request, srv.response);
 }
@@ -246,6 +246,7 @@ void Driver::run()
 	int init_counter = 1;
 	read_publisher = nh.advertise<std_msgs::String>("read", 1000);
 	ros::Rate loop_rate(5);
+	int count = 0;
 
 	while (ros::ok())
 	{
@@ -261,82 +262,97 @@ void Driver::run()
 			read_publisher.publish(result);
 			boost::replace_all(result.data, "\r", "");
 			boost::replace_all(result.data, "+", "");
-			if(init_counter < 5)
+
+			std::vector<std::string> fields;
+			boost::split(fields, result.data, boost::algorithm::is_any_of("D"));
+
+			std::vector<std::string> fields_H;
+			boost::split(fields_H, fields[1], boost::algorithm::is_any_of("?"));
+
+			if (fields_H[0] == "H")
 			{
-				init_counter += 1;
-			}
-			else
-			{
-				std::vector<std::string> fields;
-				boost::split(fields, result.data, boost::algorithm::is_any_of("D"));
-				std::vector<std::string> fields_H;
-				boost::split(fields_H, fields[1], boost::algorithm::is_any_of("?"));
-				if (fields_H[0] == "H")
+
+				for (int i = 0; i < publisherVecH.size(); ++i)
 				{
 
-					for (int i = 0; i < publisherVecH.size(); ++i)
+					std::vector<std::string> sub_fields_H;
+
+					boost::split(sub_fields_H, fields_H[i + 1], boost::algorithm::is_any_of(":"));
+					roboteq_motor_controller_driver::channel_values Q1;
+
+					Q1.value.push_back(0);
+					for (int j = 0; j < sub_fields_H.size(); j++)
 					{
-
-						std::vector<std::string> sub_fields_H;
-
-						boost::split(sub_fields_H, fields_H[i + 1], boost::algorithm::is_any_of(":"));
-						roboteq_motor_controller_driver::channel_values Q1;
-
-						Q1.value.push_back(0);
-						for (int j = 0; j < sub_fields_H.size(); j++)
+						try
 						{
 							Q1.value.push_back(boost::lexical_cast<int>(sub_fields_H[j]));
 						}
-
-						publisherVecH[i].publish(Q1);
-					}
-				}
-				else
-				{
-					ROS_INFO_STREAM("Garbage data on Serial");
-				}
-
-				std::vector<std::string> fields_L;
-				std::vector<std::string> fields_G;
-				boost::split(fields_G, fields[3], boost::algorithm::is_any_of("?"));
-				boost::split(fields_L, fields[2], boost::algorithm::is_any_of("?"));
-				if (fields_L[0] == "L")
-				{
-
-					for (int i = 0; i < publisherVecL.size(); ++i)
-					{
-						std::vector<std::string> sub_fields_L;
-
-						boost::split(sub_fields_L, fields_L[i + 1], boost::algorithm::is_any_of(":"));
-
-						roboteq_motor_controller_driver::channel_values Q1;
-						Q1.value.push_back(0);
-						for (int j = 0; j < sub_fields_L.size(); j++)
+						catch (const std::exception &e)
 						{
+							count++;
+							if (count>10)
+							{
+								ROS_INFO_STREAM("Garbage data on Serial");
+							}
+						}
+					}
 
+					publisherVecH[i].publish(Q1);
+				}
+			}
+
+
+			std::vector<std::string> fields_L;
+			std::vector<std::string> fields_G;
+			boost::split(fields_G, fields[3], boost::algorithm::is_any_of("?"));
+			boost::split(fields_L, fields[2], boost::algorithm::is_any_of("?"));
+			if (fields_L[0] == "L")
+			{
+
+				for (int i = 0; i < publisherVecL.size(); ++i)
+				{
+					std::vector<std::string> sub_fields_L;
+
+					boost::split(sub_fields_L, fields_L[i + 1], boost::algorithm::is_any_of(":"));
+
+					roboteq_motor_controller_driver::channel_values Q1;
+					Q1.value.push_back(0);
+					for (int j = 0; j < sub_fields_L.size(); j++)
+					{
+						try
+						{
 							Q1.value.push_back(boost::lexical_cast<int>(sub_fields_L[j]));
 						}
-
-						publisherVecL[i].publish(Q1);
+						catch (const std::exception &e)
+						{
+							count++;
+							if (count > 10)
+							{
+								ROS_INFO_STREAM("Garbage data on Serial");
+							}
+						}
 					}
+
+					publisherVecL[i].publish(Q1);
 				}
-
-				if (fields_G[0] == "G")
-				{
-
-					for (int i = 0; i < publisherVecG.size(); ++i)
-					{
-						std_msgs::String Q1;
-						Q1.data = fields_G[i + 1];
-
-						publisherVecG[i].publish(Q1);
-					}
-				}
-
-				//ROS_INFO_STREAM("success!");
-
-				Driver::roboteq_subscriber();
 			}
+
+			if (fields_G[0] == "G")
+			{
+
+				for (int i = 0; i < publisherVecG.size(); ++i)
+				{
+					std_msgs::String Q1;
+					Q1.data = fields_G[i + 1];
+
+					publisherVecG[i].publish(Q1);
+				}
+			}
+
+			//ROS_INFO_STREAM("success!");
+
+			Driver::roboteq_subscriber();
+
 		}
 		loop_rate.sleep();
 		//ROS_INFO_STREAM("Type the command - \"rostopic list\" - in new terminal for publishers");
