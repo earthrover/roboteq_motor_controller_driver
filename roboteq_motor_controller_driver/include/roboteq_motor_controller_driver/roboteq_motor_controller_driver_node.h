@@ -19,7 +19,6 @@
 #include <std_msgs/Int16.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/String.h>
-#include "std_msgs/Bool.h"
 #include <tf/tf.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Twist.h>
@@ -44,7 +43,6 @@ public:
 	//~Driver();
 	ros::Subscriber cmd_vel_sub;
 	ros::Publisher read_publisher;
-	ros::Publisher port_status_publisher;
 
 	ros::ServiceServer configsrv;
 	ros::ServiceServer commandsrv;
@@ -53,7 +51,6 @@ public:
 	//void diff_drive(int speed1, int speed2, float wheel_rad, float wheel_dist, int encoder_coef);
 	//void cmd_vel_callback(sensor_msgs::Joy::ConstPtr& msg);
 	void connect();
-	bool load_manual_profile();
 	void run();
 	void roboteq_subscriber();
 	void roboteq_publisher();
