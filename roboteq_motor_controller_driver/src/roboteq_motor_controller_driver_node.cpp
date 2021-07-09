@@ -42,7 +42,7 @@ void Driver::connect()
 		}
 		if (ser.isOpen())
 		{
-			ROS_INFO_STREAM("Serial Port initialized\"");
+			ROS_INFO("Serial Port %s initialized", port.c_str());
 			break;
 		}
 		else
