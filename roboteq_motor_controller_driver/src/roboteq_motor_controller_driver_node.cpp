@@ -182,6 +182,7 @@ void Driver::run()
 					std::vector<std::string> sub_fields_H;
 					boost::split(sub_fields_H, fields_H[i + 1], boost::algorithm::is_any_of(":"));
 					roboteq_motor_controller_driver::channel_values Q1;
+					Q1.value.push_back(0);
 					for (int j = 0; j < sub_fields_H.size(); j++)
 					{
 						Q1.value.push_back(boost::lexical_cast<int>(sub_fields_H[j]));
