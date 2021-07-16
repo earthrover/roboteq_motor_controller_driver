@@ -1,4 +1,4 @@
-#include <roboteq_motor_controller_driver/roboteq_motor_controller_driver_node.h>
+#include <roboteq_motor_controller_driver/roboteq_motor_controller_driver.h>
 
 int main(int argc, char** argv){
 	ros::init(argc, argv, "roboteq_motor_controller_driver");
@@ -8,18 +8,12 @@ int main(int argc, char** argv){
 	driver.roboteq_services();
 
 	driver.run();
-
-        ros::AsyncSpinner spinner(4);
-
+  ros::AsyncSpinner spinner(4);
 	spinner.start();
-
-
-
 
 	ros::waitForShutdown();
 	//spinner.stop();
 
 	return 0;
-
 
 }

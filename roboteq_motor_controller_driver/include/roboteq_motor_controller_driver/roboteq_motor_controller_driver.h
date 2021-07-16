@@ -32,60 +32,54 @@
 #include <roboteq_motor_controller_driver/querylist.h>
 #include <boost/algorithm/string/regex.hpp>
 #include <boost/regex.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <serial/serial.h>
+#include <ros/ros.h>
+#include <std_msgs/String.h>
+#include <std_msgs/Empty.h>
+#include <iostream>
+#include <sstream>
+#include <typeinfo>
+#include <roboteq_motor_controller_driver/querylist.h>
 
-namespace roboteq{
-
-class Driver
+class RoboteqDriver
 {
 public:
-	//Driver(ros::NodeHandle& nh);
-	//Driver();
-	//~Driver();
 	ros::Subscriber cmd_vel_sub;
 	ros::Publisher read_publisher;
 
 	ros::ServiceServer configsrv;
 	ros::ServiceServer commandsrv;
 	ros::ServiceServer maintenancesrv;
-	//ros::ServiceClient configsrv_client;
-	//void diff_drive(int speed1, int speed2, float wheel_rad, float wheel_dist, int encoder_coef);
-	//void cmd_vel_callback(sensor_msgs::Joy::ConstPtr& msg);
+
 	void connect();
 	void run();
-	void roboteq_subscriber();
 	void roboteq_publisher();
 	void cmd_vel_callback(const geometry_msgs::Twist& msg);
-	//void initSub();
 
-
-	int channel_number_1;
-	int channel_number_2;
-	int frequencyH;
-	int frequencyL;
-	int frequencyG;
-
-
-
-
-	void roboteq_services();
 	bool configservice(roboteq_motor_controller_driver::config_srv::Request& req,     	roboteq_motor_controller_driver::config_srv::Response& res);
-
 	bool commandservice(roboteq_motor_controller_driver::command_srv::Request& req,     	roboteq_motor_controller_driver::command_srv::Response& res);
-
 	bool maintenanceservice(roboteq_motor_controller_driver::maintenance_srv::Request& req,     	roboteq_motor_controller_driver::maintenance_srv::Response& res);
 
 
 private:
-	int baud_rate;
-	std::string port;
-	std::string firmware;
-	int channel;
+	ros::NodeHandle _nh;
 
+	int _frequencyH;
+	int _frequencyL;
+	int32_t _baud_rate;
+	std::string _port;
+	std::string _firmware;
+	serial::Serial _ser;
 
-geometry_msgs::TransformStamped tf_msg;
-tf::TransformBroadcaster odom_broadcaster;
-nav_msgs::Odometry odom_msg;
-    nav_msgs::Odometry odom;
+	geometry_msgs::TransformStamped tf_msg;
+	tf::TransformBroadcaster odom_broadcaster;
+	nav_msgs::Odometry odom_msg;
+  nav_msgs::Odometry odom;
 
 	enum fault_flag
 	{

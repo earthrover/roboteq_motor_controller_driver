@@ -1,46 +1,32 @@
-#include <roboteq_motor_controller_driver/roboteq_motor_controller_driver_node.h>
-#include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string/split.hpp>
-
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/algorithm/string/classification.hpp>
-#include <serial/serial.h>
-#include <ros/ros.h>
-#include <std_msgs/String.h>
-#include <std_msgs/Empty.h>
-#include <iostream>
+#include <roboteq_motor_controller_driver/roboteq_motor_controller_driver.h>
 #include <sstream>
-#include <typeinfo>
-#include <roboteq_motor_controller_driver/querylist.h>
 
-serial::Serial ser;
-
-using namespace roboteq;
-
-void Driver::connect()
+void RoboteqDriver::init()
 {
-	ros::NodeHandle nh;
-	std::string port;
-	int32_t baud;
-	nh.param<std::string>("port", port, "/dev/ttyACM0");
-	nh.param<int32_t>("baud", baud, 115200);
+	_nh.param<std::string>("port", _port, "/dev/ttyACM0");
+	_nh.param<int32_t>("baud", _baud_rate, 115200);
+
+	connect();
+}
+
+void RoboteqDriver::connect()
+{
 	int serial_trials = 1;
 	while(serial_trials <= 20)
 	{
 		try
 		{
-			ser.setPort(port);
-			ser.setBaudrate(baud);
+			_ser.setPort(port);
+			_ser.setBaudrate(baud);
 			serial::Timeout to = serial::Timeout::simpleTimeout(1000);
-			ser.setTimeout(to);
-			ser.open();
+			_ser.setTimeout(to);
+			_ser.open();
 		}
 		catch (serial::IOException &e)
 		{
 			ROS_ERROR("Unable to open port %s", port.c_str());
 		}
-		if (ser.isOpen())
+		if (_ser.isOpen())
 		{
 			ROS_INFO("Serial Port %s initialized", port.c_str());
 			break;
@@ -53,19 +39,17 @@ void Driver::connect()
 	}
 }
 
-void Driver::cmd_vel_callback(const geometry_msgs::Twist &msg)
+void RoboteqDriver::cmd_vel_callback(const geometry_msgs::Twist &msg)
 {
 	std::stringstream cmd_sub;
-	cmd_sub << "!G 1"
-			<< " " << msg.linear.x << "_"
-			<< "!G 2"
-			<< " " << msg.angular.z << "_";
+	cmd_sub << "!G 1" << " " << msg.linear.x << "_"
+			    << "!G 2" << " " << msg.angular.z << "_";
 
-	ser.write(cmd_sub.str());
-	ser.flush();
+	_ser.write(cmd_sub.str());
+	_ser.flush();
 }
 
-bool Driver::configservice(roboteq_motor_controller_driver::config_srv::Request &request, roboteq_motor_controller_driver::config_srv::Response &response)
+bool RoboteqDriver::configservice(roboteq_motor_controller_driver::config_srv::Request &request, roboteq_motor_controller_driver::config_srv::Response &response)
 {
 	std::stringstream str;
 	if(request.channel)
@@ -78,8 +62,8 @@ bool Driver::configservice(roboteq_motor_controller_driver::config_srv::Request 
 		str << "^" << request.userInput << " " << request.value << "_ "
 		<< "%\clsav321654987";
 	}
-	ser.write(str.str());
-	ser.flush();
+	_ser.write(str.str());
+	_ser.flush();
 	response.result = str.str();
 
 	ROS_INFO_STREAM(response.result);
@@ -90,8 +74,8 @@ bool Driver::commandservice(roboteq_motor_controller_driver::command_srv::Reques
 {
 	std::stringstream str;
 	str << "!" << request.userInput << " " << request.channel << " " << request.value << "_";
-	ser.write(str.str());
-	ser.flush();
+	_ser.write(str.str());
+	_ser.flush();
 	response.result = str.str();
 
 	ROS_INFO_STREAM(response.result);
@@ -103,10 +87,10 @@ bool Driver::maintenanceservice(roboteq_motor_controller_driver::maintenance_srv
 	std::stringstream str;
 	str << "%" << request.userInput << " "
 		<< "_";
-	ser.write(str.str());
-	ser.flush();
+	_ser.write(str.str());
+	_ser.flush();
 
-	response.result = ser.read(ser.available());
+	response.result = _ser.read(ser.available());
 
 	ROS_INFO_STREAM(response.result);
 	return true;
@@ -153,9 +137,9 @@ void Driver::run()
 		publisherVecH.push_back(nh.advertise<roboteq_motor_controller_driver::channel_values>(KH_vector[i], 100));
 	}
 
-	ser.write(ss0.str());
-	ser.write(ss1.str());
-	ser.flush();
+	_ser.write(ss0.str());
+	_ser.write(ss1.str());
+	_ser.flush();
 
 	read_publisher = nh.advertise<std_msgs::String>("read", 1000);
 	ros::Rate loop_rate(5);
@@ -163,10 +147,10 @@ void Driver::run()
 	while (ros::ok())
 	{
 		ros::spinOnce();
-		if (ser.available())
+		if (_ser.available())
 		{
 			std_msgs::String result;
-			result.data = ser.read(ser.available());
+			result.data = _ser.read(_ser.available());
 
 			read_publisher.publish(result);
 			boost::replace_all(result.data, "\r", "");
