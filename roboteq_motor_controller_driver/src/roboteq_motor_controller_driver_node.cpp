@@ -124,8 +124,9 @@ void Driver::run()
 {
 	std_msgs::String str1;
 	ros::NodeHandle nh;
-	cmd_vel_sub = nh.subscribe("/cmd_vel", 10, &Driver::cmd_vel_callback, this);
+	cmd_vel_sub = nh.subscribe("/cmd_vel", 1, &Driver::cmd_vel_callback, this);
 	nh.getParam("frequencyH", frequencyH);
+	double frequency = 1000/frequencyH; //convert from ms to Hz
 
 	typedef std::string Key;
 	typedef std::string Val;
@@ -158,7 +159,7 @@ void Driver::run()
 	ser.flush();
 
 	read_publisher = nh.advertise<std_msgs::String>("read", 1000);
-	ros::Rate loop_rate(5);
+	ros::Rate loop_rate(frequency);
 
 	while (ros::ok())
 	{

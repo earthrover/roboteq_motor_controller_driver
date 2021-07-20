@@ -9,12 +9,8 @@ int main(int argc, char** argv){
 
 	driver.run();
 
-        ros::AsyncSpinner spinner(4);
-
-	spinner.start();
-
-
-
+  //ros::AsyncSpinner spinner(4);
+	//spinner.start();
 
 	ros::waitForShutdown();
 	//spinner.stop();
