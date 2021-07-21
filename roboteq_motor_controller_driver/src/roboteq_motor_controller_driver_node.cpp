@@ -125,9 +125,9 @@ void Driver::run()
 	std_msgs::String str1;
 	ros::NodeHandle nh;
 	cmd_vel_sub = nh.subscribe("/cmd_vel", 1, &Driver::cmd_vel_callback, this);
+	double frequencyH;
 	nh.getParam("frequencyH", frequencyH);
 	double frequency = 1000/frequencyH; //convert from ms to Hz
-
 	typedef std::string Key;
 	typedef std::string Val;
 	std::map<Key, Val> map_sH;
@@ -137,8 +137,9 @@ void Driver::run()
 	std::stringstream ss1;
 	std::vector<std::string> KH_vector;
 
-	ss0 << "# c_^echof 1_"; //'#c' cleans the buffer (p. 286, v2.1), '^echof 1' disables serial echo (p. 302, v2.1)
-	ss1 << "/\"DH?\",\"?\""; //create data stream (p. 287, v2.1)
+	ss0 << "_^echof 1_"; //'#c' cleans the buffer (p. 286, v2.1), '^echof 1' disables serial echo (p. 302, v2.1)
+	ss1 << "# c_/\"DH?\",\"?\""; //create data stream (p. 287, v2.1)
+	// Clearing the buffer does not seem to be working
 	for (std::map<Key, Val>::iterator iter = map_sH.begin(); iter != map_sH.end(); ++iter)
 	{
 		Key KH = iter->first;
@@ -158,6 +159,7 @@ void Driver::run()
 	ser.write(ss1.str());
 	ser.flush();
 
+	int init_counter = 1;
 	read_publisher = nh.advertise<std_msgs::String>("read", 1000);
 	ros::Rate loop_rate(frequency);
 
@@ -167,33 +169,51 @@ void Driver::run()
 		if (ser.available())
 		{
 			std_msgs::String result;
-			result.data = ser.read(ser.available());
-
-			read_publisher.publish(result);
-			boost::replace_all(result.data, "\r", "");
-			boost::replace_all(result.data, "+", "");
-			std::vector<std::string> fields;
-			boost::split(fields, result.data, boost::algorithm::is_any_of("D"));
-			std::vector<std::string> fields_H;
-			boost::split(fields_H, fields[1], boost::algorithm::is_any_of("?"));
-			if (fields_H[0] == "H")
+			while ((result.data).empty())
 			{
-				for (int i = 0; i < publisherVecH.size(); ++i)
-				{
-					std::vector<std::string> sub_fields_H;
-					boost::split(sub_fields_H, fields_H[i + 1], boost::algorithm::is_any_of(":"));
-					roboteq_motor_controller_driver::channel_values Q1;
-					Q1.value.push_back(0);
-					for (int j = 0; j < sub_fields_H.size(); j++)
+					result.data = ser.read(ser.available());
+					if (!(result.data).empty())
 					{
-						Q1.value.push_back(boost::lexical_cast<int>(sub_fields_H[j]));
+							read_publisher.publish(result);
+							boost::replace_all(result.data, "\r", "");
+							boost::replace_all(result.data, "+", "");
 					}
-					publisherVecH[i].publish(Q1);
-				}
+			}
+			//ROS_INFO("result: %s", (result.data).c_str());
+			if(init_counter < 5)
+			{
+				init_counter += 1;
 			}
 			else
 			{
-				ROS_INFO_STREAM("Garbage data on Serial");
+					std::vector<std::string> fields;
+					boost::split(fields, result.data, boost::algorithm::is_any_of("D"));
+					std::vector<std::string> fields_H;
+					boost::split(fields_H, fields[1], boost::algorithm::is_any_of("?")); //fields.back()
+					if (fields_H[0] == "H")
+					{
+						for (int i = 0; i < publisherVecH.size(); ++i)
+						{
+							std::vector<std::string> sub_fields_H;
+							boost::split(sub_fields_H, fields_H[i + 1], boost::algorithm::is_any_of(":"));
+							roboteq_motor_controller_driver::channel_values Q1;
+							Q1.value.push_back(0);
+							for (int j = 0; j < sub_fields_H.size(); j++)
+							{
+								try{
+										Q1.value.push_back(boost::lexical_cast<int>(sub_fields_H[j]));
+								}
+								catch(const std::exception &e){
+										ROS_INFO_STREAM("Bad lexical cast");
+								}
+							}
+							publisherVecH[i].publish(Q1);
+						}
+					}
+					else
+					{
+						ROS_INFO_STREAM("Garbage data on Serial");
+					}
 			}
 		}
 	loop_rate.sleep();
